@@ -1,14 +1,12 @@
 name: Bitnami Redis-Cluster Docker Image CI/CD
 
 env:
-  REDIS_CONTAINER: "redis-cluster"
+  REDIS_CONTAINER_NAME: "redis-cluster"
   REDIS_VERSION: "8.4"
   BASE_OS: "debian-12"
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
   workflow_dispatch:            # <-- added: allows manual runs from the Actions UI
     inputs:
@@ -31,14 +29,14 @@ jobs:
         # Use inputs when provided, fallback to env
         REDIS_VERSION="${{ github.event.inputs.redis_version || env.REDIS_VERSION }}"
         BASE_OS="${{ github.event.inputs.base_os || env.BASE_OS }}"
-        BUILD_PATH="bitnami/${REDIS_CONTAINER}/${REDIS_VERSION}/${BASE_OS}"
-        LOCAL_TAG="dvs-${REDIS_CONTAINER}:${REDIS_VERSION}-${BASE_OS}"
+        BUILD_PATH="bitnami/${REDIS_CONTAINER_NAME}/${REDIS_VERSION}/${BASE_OS}"
+        LOCAL_TAG="${REDIS_CONTAINER_NAME}:${REDIS_VERSION}-${BASE_OS}"
         docker build "$BUILD_PATH" \
           --file "$BUILD_PATH/Dockerfile" \
           --tag "$LOCAL_TAG"
     - name: Push image to Azure Container Registry
       env:
-        ACR_LOGIN_SERVER: ${{ secrets.ACR_REGISTRY }}
+        ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
         ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
         ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
       run: |
@@ -47,7 +45,7 @@ jobs:
           exit 1
         fi
         docker login "$ACR_LOGIN_SERVER" --username "$ACR_USERNAME" --password "$ACR_PASSWORD"
-        REMOTE_TAG="${ACR_LOGIN_SERVER}/${REDIS_CONTAINER}:${REDIS_VERSION}-${BASE_OS}"
-        LOCAL_TAG="dvs-${REDIS_CONTAINER}:${REDIS_VERSION}-${BASE_OS}"
+        REMOTE_TAG="${ACR_LOGIN_SERVER}/${REDIS_CONTAINER_NAME}:${REDIS_VERSION}-${BASE_OS}"
+        LOCAL_TAG="${REDIS_CONTAINER_NAME}:${REDIS_VERSION}-${BASE_OS}"
         docker tag "$LOCAL_TAG" "$REMOTE_TAG"
         docker push "$REMOTE_TAG"
